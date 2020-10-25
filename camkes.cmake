@@ -376,7 +376,7 @@ function(DeclareCAmkESRootserver adl)
         1
         CAMKES_ROOT
         "" # Option arguments
-        "DTS_FILE_PATH" # Single arguments
+        "DTS_FILE_PATH;DTB_FILE_PATH" # Single arguments
         "CPP_FLAGS;CPP_INCLUDES" # Multiple arguments
     )
     # Stash this request as a global property. The main CAmkES build file will call
