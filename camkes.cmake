@@ -332,12 +332,18 @@ endif()
 # Find the sponge tool, or emulate it
 find_program(SPONGE_TOOL sponge)
 if("${SPONGE_TOOL}" STREQUAL "SPONGE_TOOL-NOTFOUND")
-    set(CAMKES_SPONGE_INVOCATION "sh ${CMAKE_CURRENT_BINARY_DIR}/sponge_emul.sh")
-    file(
-        WRITE
-            "${CMAKE_CURRENT_BINARY_DIR}/sponge_emul.sh"
-            "python -c 'import sys; data = sys.stdin.read(); f = open(sys.argv[1], \"w\"); f.write(data); f.close()' $@"
+    set(
+        CAMKES_SPONGE_INVOCATION
+        "python -c 'import sys; with open(sys.argv[1],\"w\") as f: f.write(sys.stdin.read());'"
     )
+
+    # set(CAMKES_SPONGE_INVOCATION "sh ${CMAKE_CURRENT_BINARY_DIR}/sponge_emul.sh")
+    # file(
+    #     WRITE
+    #         "${CMAKE_CURRENT_BINARY_DIR}/sponge_emul.sh"
+    #         "python -c 'import sys; data = sys.stdin.read(); f = open(sys.argv[1], \"w\"); f.write(data); f.close()' $@"
+    # )
+
 else()
     set(CAMKES_SPONGE_INVOCATION "${SPONGE_TOOL}")
     mark_as_advanced(SPONGE_TOOL)
