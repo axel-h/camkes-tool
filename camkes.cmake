@@ -385,6 +385,11 @@ function(DeclareCAmkESRootserver adl)
     if(declared)
         message(FATAL_ERROR "A CAmkES rootserver was already declared")
     endif()
+    set_property(GLOBAL PROPERTY CAMKES_ROOT_DECLARED TRUE)
+
+    get_absolute_list_source_or_binary(adl "${adl}")
+    set_property(GLOBAL PROPERTY CAMKES_ROOT_ADL "${adl}")
+
     foreach(include IN LISTS CAMKES_ROOT_CPP_INCLUDES)
         get_absolute_list_source_or_binary(include "${include}")
         list(APPEND CAMKES_ROOT_CPP_FLAGS "-I${include}")
@@ -393,22 +398,14 @@ function(DeclareCAmkESRootserver adl)
     # or the C compiler. This allows excluding C specific things from CAmkES in
     # shared header files.
     list(APPEND CAMKES_ROOT_CPP_FLAGS "-DCAMKES_TOOL_PROCESSING")
-    get_absolute_list_source_or_binary(adl "${adl}")
-    set_property(GLOBAL PROPERTY CAMKES_ROOT_ADL "${adl}")
     set_property(GLOBAL PROPERTY CAMKES_ROOT_CPP_FLAGS "${CAMKES_ROOT_CPP_FLAGS}" APPEND)
-    set_property(GLOBAL PROPERTY CAMKES_ROOT_DECLARED TRUE)
-    if(
-        ${CAmkESDTS}
-        AND
-            NOT
-            "${CAMKES_ROOT_DTS_FILE}"
-            STREQUAL
-            ""
-    )
+
+    if(${CAmkESDTS} AND NOT "${CAMKES_ROOT_DTS_FILE}" STREQUAL "")
         get_absolute_list_source_or_binary(CAMKES_ROOT_DTS_FILE_PATH "${CAMKES_ROOT_DTS_FILE_PATH}")
     endif()
-    set_property(GLOBAL PROPERTY CAMKES_ROOT_DTB_FILE_PATH "${CAMKES_ROOT_DTB_FILE_PATH}")
     set_property(GLOBAL PROPERTY CAMKES_ROOT_DTS_FILE_PATH "${CAMKES_ROOT_DTS_FILE_PATH}")
+
+    set_property(GLOBAL PROPERTY CAMKES_ROOT_DTB_FILE_PATH "${CAMKES_ROOT_DTB_FILE_PATH}")
 endfunction(DeclareCAmkESRootserver)
 
 # Called to actually generate the definitions for the CAmkES rootserver. Due to its
