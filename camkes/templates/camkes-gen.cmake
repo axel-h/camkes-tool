@@ -64,18 +64,38 @@ endmacro(ParentListAppend)
 
 # Helper function for declaring a generated file
 function(CAmkESGen output item template)
-    cmake_parse_arguments(PARSE_ARGV 3 CAMKES_GEN "SOURCE;C_STYLE;THY_STYLE" "SOURCES_VAR;VER_BASE_NAME" "DEPENDS")
+    cmake_parse_arguments(
+        PARSE_ARGV
+        3
+        CAMKES_GEN
+        "SOURCE;C_STYLE;THY_STYLE"
+        "SOURCES_VAR;VER_BASE_NAME"
+        "DEPENDS"
+    )
     if (NOT "${CAMKES_GEN_UNPARSED_ARGUMENTS}" STREQUAL "")
         message(FATAL_ERROR "Unknown arguments to CAmkESGen: ${CAMKES_GEN_UNPARSED_ARGUMENTS}")
     endif()
     # generate command
     # Reflow generated files if requested
     if (CAMKES_GEN_C_STYLE AND (NOT ("${CAMKES_C_FMT_INVOCATION}" STREQUAL "")))
-        ParentListAppend(reflow_commands COMMAND sh -c
-            "${CAMKES_C_FMT_INVOCATION} ${output} | ${CAMKES_SPONGE_INVOCATION} ${output}")
+        ParentListAppend(
+            reflow_commands
+            COMMAND sh -c "${CAMKES_C_FMT_INVOCATION} ${output} | ${CAMKES_SPONGE_INVOCATION} ${output}"
+        )
     elseif(CAMKES_GEN_THY_STYLE)
-        ParentListAppend(reflow_commands COMMAND sh -c
-            "${TPP_TOOL} ${output} | ${CAMKES_SPONGE_INVOCATION} ${output}")
+        ParentListAppend(
+            reflow_commands
+            COMMAND sh -c "${TPP_TOOL} ${output} | ${CAMKES_SPONGE_INVOCATION} ${output}"
+        )
+    elseif(${output} MATCHES "^.*\.[c|h]$")
+        #message("beautify ${output}")
+        #add_custom_target(
+        #    "${item}-beautify" ALL
+        #    COMMAND sed -i '/^[[:space:]]*$$/d' "${output}"
+        #    COMMAND astyle -n --attach-return-type --attach-return-type-decl "${output}"
+        #    COMMENT "beautify ${output}"
+        #    DEPENDS "${output}"
+        #)
     endif()
     # Append the item and outfile
     ParentListAppend(item_list "${item}")
