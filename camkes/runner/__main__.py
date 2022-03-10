@@ -114,10 +114,7 @@ def parse_args(argv, out, err):
                         help='Default stack size of each thread.')
     parser.add_argument('--largeframe', action='store_true',
                         help='Use large frames (for non-DMA pools) when possible.')
-    parser.add_argument('--architecture', '--arch', default='aarch32',
-                        type=lambda x: type('')(x).lower(),
-                        choices=('aarch32', 'arm_hyp', 'ia32', 'x86_64',
-                                 'aarch64', 'riscv32', 'riscv64'),
+    parser.add_argument('--architecture', '--arch', required=True,
                         help='Target architecture.')
     parser.add_argument('--makefile-dependencies', '-MD',
                         type=argparse.FileType('w'), help='Write Makefile dependency rule to '
@@ -247,6 +244,7 @@ def main(argv, out, err):
         render_state = None
     else:
         obj_space = ObjectAllocator()
+
         obj_space.spec.arch = options.architecture
         render_state = RenderState(obj_space=obj_space)
 
