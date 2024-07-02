@@ -707,52 +707,74 @@ endfunction(AppendCAmkESComponentTarget)
 
 # Internal helper function for setting camkes component properties
 function(DeclareCAmkESConnector name)
-    set(target_name CAmkESConnector_${name})
+    set(singleValueArgList "FROM;TO;CAKEML_TO;FROM_HEADER;TO_HEADER")
+    set(multiValueArgList "FROM_LIBS;TO_LIBS")
     cmake_parse_arguments(
         PARSE_ARGV
         1
-        CAMKES_CONNECTOR
-        "" # Option arguments
-        "FROM;TO;CAKEML_TO;FROM_HEADER;TO_HEADER" # Single arguments
-        "FROM_LIBS;TO_LIBS" # Multiple aguments
+        PARAM
+        "MODIFY_EXISTING;GENERATE;GENERATE_TO;SYMMETRIC;NO_HEADER;NO_HEADER_FROM;NO_HEADER_TO" # option arguments
+        "${singleValueArgList}"
+        "${multiValueArgList}"
     )
-    # Declare a target that we will set properties on
-    if(NOT (TARGET "${target_name}"))
-        add_custom_target("${target_name}")
+
+    message(VERBOSE "CAmkES connector: ${name}")
+    set(target CAmkESConnector_${name})
+    if(NOT TARGET ${target})
+        # Declare a target that we will set properties on
+        add_custom_target(${target})
+    elseif(NOT PARAM_MODIFY_EXISTING)
+        # CMake include quirks must result in helper function getting included
+        # more than one and thus connectors are declared again. This is not
+        # allowd and must be fixed. However, there are also rare cases where an
+        # exiting connector is modified - but this must be stated explicitly
+        # then.
+        message(FATAL_ERROR "CAmkES connector already declared: ${name}")
     endif()
-    set_property(TARGET "${target_name}" APPEND PROPERTY CONNECTOR_FROM ${CAMKES_CONNECTOR_FROM})
-    set_property(TARGET "${target_name}" APPEND PROPERTY CONNECTOR_TO ${CAMKES_CONNECTOR_TO})
-    set_property(
-        TARGET "${target_name}"
-        APPEND
-        PROPERTY CONNECTOR_FROM_HEADER ${CAMKES_CONNECTOR_FROM_HEADER}
-    )
-    set_property(
-        TARGET "${target_name}"
-        APPEND
-        PROPERTY CONNECTOR_FROM_LIBS ${CAMKES_CONNECTOR_FROM_LIBS}
-    )
-    set_property(
-        TARGET "${target_name}"
-        APPEND
-        PROPERTY CONNECTOR_TO_HEADER ${CAMKES_CONNECTOR_TO_HEADER}
-    )
-    set_property(
-        TARGET "${target_name}"
-        APPEND
-        PROPERTY CONNECTOR_TO_LIBS ${CAMKES_CONNECTOR_TO_LIBS}
-    )
-    set_property(
-        TARGET "${target_name}"
-        APPEND
-        PROPERTY CONNECTOR_CAKEML_TO ${CAMKES_CONNECTOR_CAKEML_TO}
-    )
-endfunction(DeclareCAmkESConnector)
+
+    if(NOT PARAM_TYPE)
+        set(PARAM_TYPE "${name}")
+    endif()
+    set(BASENAME "${PARAM_TYPE}")
+
+    if(NOT PARAM_FROM AND (PARAM_GENERATE OR PARAM_GENERATE_FROM))
+        set(BASENAME_FROM "${BASENAME}")
+        if(NOT PARAM_SYMMETRIC)
+            string(APPEND BASENAME_FROM "-from")
+        endif()
+        string(APPEND BASENAME_FROM ".template")
+        set(PARAM_FROM "${BASENAME_FROM}.c")
+        if(NOT (PARAM_FROM_HEADER OR PARAM_NO_HEADER OR PARAM_NO_HEADER_FROM))
+            set(PARAM_FROM_HEADER "${BASENAME_FROM}.h")
+        endif()
+    endif()
+
+    if(NOT PARAM_TO AND (PARAM_GENERATE OR PARAM_GENERATE_TO))
+        set(BASENAME_TO "${BASENAME}")
+        if(NOT PARAM_SYMMETRIC)
+            string(APPEND BASENAME_TO "-to")
+        endif()
+        string(APPEND BASENAME_TO ".template")
+        set(PARAM_TO "${BASENAME_TO}.c")
+        if(NOT (PARAM_TO_HEADER OR PARAM_NO_HEADER OR PARAM_NO_HEADER_TO))
+            set(PARAM_TO_HEADER "${BASENAME_TO}.h")
+        endif()
+    endif()
+
+    foreach(prop IN LISTS singleValueArgList multiValueArgList)
+        set(value "${PARAM_${prop}}")
+        if(value)
+            set_target_properties(${target} PROPERTIES CONNECTOR_${prop} "${value}")
+        endif()
+    endforeach()
+endfunction()
+
 
 # This is called by CAmkES components to declare information needed for the
 # camkes-gen.cmake to actually build them. Can be called multiple times to
 # append additional information.
 function(DeclareCAmkESComponent name)
+    message(VERBOSE "CAmkES component: ${name}")
     AppendCAmkESComponentTarget(CAmkESComponent_${name} ${ARGN})
 endfunction(DeclareCAmkESComponent)
 

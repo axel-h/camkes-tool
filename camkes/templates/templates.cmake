@@ -25,14 +25,15 @@ foreach(
     seL4DTBHardware
     seL4InitHardware
 )
-    DeclareCAmkESConnector(
-        ${connector}
-        FROM
-        ${connector}-from.template.c
-        TO
-        ${connector}-to.template.c
-    )
+    DeclareCAmkESConnector(${connector} GENERATE)
 endforeach()
+
+#-------------------------------------------------------------------------------
+DeclareCAmkESConnector(seL4SharedData GENERATE SYMMETRIC NO_HEADER)
+DeclareCAmkESConnector(seL4DMASharedData GENERATE SYMMETRIC NO_HEADER)
+
+#-------------------------------------------------------------------------------
+# CamkeML
 DeclareCAmkESConnector(
     seL4RPCCallNoType
     FROM
@@ -42,15 +43,20 @@ DeclareCAmkESConnector(
     CAKEML_TO
     seL4RPCCall-to.template.cakeml
 )
-DeclareCAmkESConnector(seL4RPCCall CAKEML_TO seL4RPCCall-to.template.cakeml)
-DeclareCAmkESConnector(seL4SharedData FROM seL4SharedData.template.c TO seL4SharedData.template.c)
-DeclareCAmkESConnector(seL4DMASharedData FROM seL4DMASharedData.template.c TO seL4DMASharedData.template.c)
+
+
+DeclareCAmkESConnector(seL4RPCCall MODIFY_EXISTING CAKEML_TO seL4RPCCall-to.template.cakeml)
+
+
 # Connectors with only FROM end interfaces
 foreach(connector IN ITEMS seL4HardwareMMIO seL4HardwareIOPort)
-    DeclareCAmkESConnector(${connector} FROM ${connector}.template.c)
+    DeclareCAmkESConnector(${connector} GENERATE_FROM SYMMETRIC NO_HEADER )
 endforeach()
-DeclareCAmkESConnector(seL4DTBHW TO seL4DTBHardware-to.template.c)
+
+DeclareCAmkESConnector(seL4DTBHW TYPE seL4DTBHardware GENERATE_TO SYMMETRIC NO_HEADER)
+
+
 # Connectors with only TO end interfaces
 foreach(connector IN ITEMS seL4HardwareInterrupt seL4IOAPICHardwareInterrupt)
-    DeclareCAmkESConnector(${connector} TO ${connector}.template.c)
+    DeclareCAmkESConnector(${connector} GENERATE_FROM SYMMETRIC NO_HEADER)
 endforeach()
