@@ -186,9 +186,7 @@ int camkes_virtqueue_driver_scatter_send_buffer(virtqueue_driver_t *vq, void *bu
 
     while (sent < size) {
         void *vq_buf = NULL;
-        size_t to_send = 0;
-
-        to_send = size - sent < BLOCK_SIZE ? size - sent : BLOCK_SIZE;
+        size_t to_send = size - sent < BLOCK_SIZE ? size - sent : BLOCK_SIZE;
         if (camkes_virtqueue_buffer_alloc(vq, &vq_buf, to_send)) {
             ZF_LOGE("Error: could not allocate virtqueue buffer");
             return -1;
