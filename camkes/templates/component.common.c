@@ -284,10 +284,8 @@ int /*? b.name ?*/_post(void) {
 
 #ifdef CONFIG_CAMKES_DEFAULT_HEAP_SIZE
 /*- set heap_size = configuration[me.name].get('heap_size', 'CONFIG_CAMKES_DEFAULT_HEAP_SIZE') -*/
-
+#include <muslcsys/sys_morecore.h>
 static char ALIGN(PAGE_SIZE_4K) heap [/*? heap_size ?*/];
-extern char *morecore_area;
-extern size_t morecore_size;
 #else
 /*- if configuration[me.name].get('heap_size') is not none -*/
     #error Set a custom heap_size for component '/*? me.name ?*/' but this has no effect if CONFIG_LIB_SEL4_MUSLC_SYS_MORECORE_BYTES is not set to 0
@@ -308,8 +306,7 @@ static void CONSTRUCTOR(CAMKES_SYSCALL_CONSTRUCTOR_PRIORITY) init_install_syscal
 static void CONSTRUCTOR(CAMKES_SYSCALL_CONSTRUCTOR_PRIORITY+1) init(void) {
 #ifdef CONFIG_CAMKES_DEFAULT_HEAP_SIZE
     /* Assign the heap */
-    morecore_area = heap;
-    morecore_size = /*? heap_size ?*/;
+    sel4muslcsys_setup_morecore_region(heap, sizeof(heap));
 #endif
 
     /* The user has actually had no opportunity to install any error handlers at

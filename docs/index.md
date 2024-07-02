@@ -2823,13 +2823,15 @@ static heap region (the default), a wrapper can be constructed as follows:
 
 ```c
 /* Caller.c */
+#include <muslcsys/sys_morecore.h>
 
 static void safe_free(void *p) {
   /* These symbols are defined by generated code and
    * specify the bounds of the heap.
    */
-  extern char *morecore_area;
-  extern size_t morecore_size;
+  void *morecore_area;
+  size_t morecore_size;
+  sel4muslcsys_get_morecore_region(&morecore_area, &morecore_size);
 
   if ((uintptr_t)p >= (uintptr_t)morecore_area &&
       (uintptr_t)p < (uintptr_t)morecore_area + morecore_size) {
