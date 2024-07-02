@@ -170,22 +170,9 @@ size_t camkes_virtqueue_driver_buffer_to_offset(virtqueue_driver_t *vq, void *bu
     return camkes_allocator_get_offset(allocator, buffer);
 }
 
-int camkes_virtqueue_driver_send_buffer(virtqueue_driver_t *vq, void *buffer, size_t size)
-{
-    size_t offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
-    virtqueue_ring_object_t handle;
-
-    virtqueue_init_ring_object(&handle);
-    if (!virtqueue_add_available_buf(vq, &handle, (void *)offset, size, VQ_RW)) {
-        ZF_LOGE("Error while enqueuing available buffer");
-        return -1;
-    }
-    return 0;
-}
-
-static int camkes_virtqueue_driver_add_available_buf(virtqueue_driver_t *vq,
-                                                     virtqueue_ring_object_t *handle,
-                                                     void *buffer, size_t size)
+int camkes_virtqueue_driver_add_available_buf(virtqueue_driver_t *vq,
+                                              virtqueue_ring_object_t *handle,
+                                              void *buf, size_t size)
 {
     size_t offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
     if (!virtqueue_add_available_buf(vq, handle, (void *)offset, size, VQ_RW)) {
@@ -193,6 +180,13 @@ static int camkes_virtqueue_driver_add_available_buf(virtqueue_driver_t *vq,
         return -1;
     }
     return 0;
+}
+
+int camkes_virtqueue_driver_send_buffer(virtqueue_driver_t *vq, void *buffer, size_t size)
+{
+    virtqueue_ring_object_t handle;
+    virtqueue_init_ring_object(&handle);
+    return camkes_virtqueue_driver_add_available_buf(vq, &handle, buffer, size);
 }
 
 int camkes_virtqueue_driver_scatter_send_buffer(virtqueue_driver_t *vq, void *buffer, size_t size)
