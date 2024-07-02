@@ -152,15 +152,15 @@ int camkes_virtqueue_device_init_with_recv(virtqueue_device_t *device, unsigned 
                                                channel->notify) ? -1 : 0;
 }
 
-void *camkes_virtqueue_device_offset_to_buffer(virtqueue_device_t *virtqueue, size_t offset)
+void *camkes_virtqueue_device_offset_to_buffer(virtqueue_device_t *vq, size_t offset)
 {
-    uint8_t *base = (uint8_t *)virtqueue->cookie;
+    uint8_t *base = (uint8_t *)vq->cookie;
     return &base[offset];
 }
 
-void *camkes_virtqueue_driver_offset_to_buffer(virtqueue_driver_t *virtqueue, size_t offset)
+void *camkes_virtqueue_driver_offset_to_buffer(virtqueue_driver_t *vq, size_t offset)
 {
-    struct vq_buf_alloc *allocator = virtqueue->cookie;
+    struct vq_buf_alloc *allocator = vq->cookie;
     return allocator_get_sub_buffer(allocator, offset);
 }
 
@@ -172,11 +172,11 @@ size_t camkes_virtqueue_driver_buffer_to_offset(virtqueue_driver_t *vq, void *bu
 
 int camkes_virtqueue_driver_send_buffer(virtqueue_driver_t *vq, void *buffer, size_t size)
 {
-    size_t buf_offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
+    size_t offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
     virtqueue_ring_object_t handle;
 
     virtqueue_init_ring_object(&handle);
-    if (!virtqueue_add_available_buf(vq, &handle, (void *)buf_offset, size, VQ_RW)) {
+    if (!virtqueue_add_available_buf(vq, &handle, (void *)offset, size, VQ_RW)) {
         ZF_LOGE("Error while enqueuing available buffer");
         return -1;
     }
