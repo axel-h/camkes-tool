@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 
+include_guard(DIRECTORY)
+
 CAmkESAddTemplatesPath(.)
 
 # Declare connectors with templates.
