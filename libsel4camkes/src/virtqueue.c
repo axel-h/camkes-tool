@@ -183,8 +183,9 @@ int camkes_virtqueue_driver_send_buffer(virtqueue_driver_t *vq, void *buffer, si
     return 0;
 }
 
-static int chain_vq_buf(virtqueue_driver_t *vq, virtqueue_ring_object_t *handle,
-                        void *buffer, size_t size)
+static int camkes_virtqueue_driver_add_available_buf(virtqueue_driver_t *vq,
+                                                     virtqueue_ring_object_t *handle,
+                                                     void *buffer, size_t size)
 {
     size_t offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
     if (!virtqueue_add_available_buf(vq, handle, (void *)offset, size, VQ_RW)) {
@@ -211,7 +212,7 @@ int camkes_virtqueue_driver_scatter_send_buffer(virtqueue_driver_t *vq, void *bu
         if (buffer) {
             memcpy(vq_buf, &buf[sent], to_send);
         }
-        if (chain_vq_buf(vq, &handle, vq_buf, to_send)) {
+        if (!camkes_virtqueue_driver_add_available_buf(vq, &handle, vq_buf, to_send)) {
             return -1;
         }
         sent += to_send;
