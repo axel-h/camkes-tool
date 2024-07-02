@@ -16,6 +16,19 @@
 #define IDX_TO_OFFSET(block_size, idx) (block_size * idx)
 #define OFFSET_TO_IDX(block_size, offset) ((offset) / block_size)
 
+static void *camkes_allocator_get_sub_buffer(struct vq_buf_alloc *allocator, size_t offset)
+{
+    uint8_t *buf = (uint8_t *)(allocator->buffer);
+    return &buf[offset];
+}
+
+static size_t camkes_allocator_get_offset(struct vq_buf_alloc *allocator, void *buffer)
+{
+    void *base = allocator->buffer;
+    assert((uintptr_t)buffer > (uintptr_t)base);
+    return (size_t)((uintptr_t)buffer - (uintptr_t)base);
+}
+
 int camkes_virtqueue_buffer_alloc(virtqueue_driver_t *virtqueue, void **buf, size_t alloc_size)
 {
     if (!virtqueue) {
@@ -32,7 +45,7 @@ int camkes_virtqueue_buffer_alloc(virtqueue_driver_t *virtqueue, void **buf, siz
         ZF_LOGE("Error: ran out of memory");
         return -1;
     }
-    *buf = allocator->buffer + IDX_TO_OFFSET(allocator->block_size, allocator->head);
+    *buf = camkes_allocator_get_sub_buffer(allocator, IDX_TO_OFFSET(allocator->block_size, allocator->head));
     allocator->head = allocator->free_list[allocator->head];
     return 0;
 }
@@ -45,7 +58,7 @@ void camkes_virtqueue_buffer_free(virtqueue_driver_t *virtqueue, void *buffer)
     }
 
     struct vq_buf_alloc *allocator = virtqueue->cookie;
-    int idx = OFFSET_TO_IDX(allocator->block_size, (uintptr_t)buffer - (uintptr_t)(allocator->buffer));
+    int idx = OFFSET_TO_IDX(allocator->block_size, camkes_allocator_get_offset(allocator, buffer));
 
     if (idx < 0 || idx >= allocator->free_list_size) {
         ZF_LOGE("Warning: invalid buffer");
@@ -139,22 +152,27 @@ int camkes_virtqueue_device_init_with_recv(virtqueue_device_t *device, unsigned 
                                                channel->notify) ? -1 : 0;
 }
 
-void *camkes_virtqueue_device_offset_to_buffer(virtqueue_device_t *virtqueue, uintptr_t offset)
+void *camkes_virtqueue_device_offset_to_buffer(virtqueue_device_t *virtqueue, size_t offset)
 {
-    return virtqueue->cookie + offset;
+    uint8_t *base = (uint8_t *)virtqueue->cookie;
+    return &base[offset];
 }
 
-void *camkes_virtqueue_driver_offset_to_buffer(virtqueue_driver_t *virtqueue, uintptr_t offset)
+void *camkes_virtqueue_driver_offset_to_buffer(virtqueue_driver_t *virtqueue, size_t offset)
 {
     struct vq_buf_alloc *allocator = virtqueue->cookie;
+    return allocator_get_sub_buffer(allocator, offset);
+}
 
-    return allocator->buffer + offset;
+size_t camkes_virtqueue_driver_buffer_to_offset(virtqueue_driver_t *vq, void *buffer)
+{
+    struct vq_buf_alloc *allocator = vq->cookie;
+    return camkes_allocator_get_offset(allocator, buffer);
 }
 
 int camkes_virtqueue_driver_send_buffer(virtqueue_driver_t *vq, void *buffer, size_t size)
 {
-    uintptr_t base_offset = (uintptr_t)(((struct vq_buf_alloc *)vq->cookie)->buffer);
-    uintptr_t buf_offset = (uintptr_t)buffer - base_offset;
+    size_t buf_offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
     virtqueue_ring_object_t handle;
 
     virtqueue_init_ring_object(&handle);
@@ -168,9 +186,7 @@ int camkes_virtqueue_driver_send_buffer(virtqueue_driver_t *vq, void *buffer, si
 static int chain_vq_buf(virtqueue_driver_t *vq, virtqueue_ring_object_t *handle,
                         void *buffer, size_t size)
 {
-    struct vq_buf_alloc *allocator = vq->cookie;
-    uintptr_t offset = (uintptr_t)buffer - (uintptr_t)(allocator->buffer);
-
+    size_t offset = camkes_virtqueue_driver_buffer_to_offset(vq, buffer)
     if (!virtqueue_add_available_buf(vq, handle, (void *)offset, size, VQ_RW)) {
         ZF_LOGE("Error while chaining available buffer");
         return -1;
@@ -180,6 +196,7 @@ static int chain_vq_buf(virtqueue_driver_t *vq, virtqueue_ring_object_t *handle,
 
 int camkes_virtqueue_driver_scatter_send_buffer(virtqueue_driver_t *vq, void *buffer, size_t size)
 {
+    unt8_t *buf = (unt8_t *)buffer;
     size_t sent = 0;
     virtqueue_ring_object_t handle;
     virtqueue_init_ring_object(&handle);
@@ -192,7 +209,7 @@ int camkes_virtqueue_driver_scatter_send_buffer(virtqueue_driver_t *vq, void *bu
             return -1;
         }
         if (buffer) {
-            memcpy(vq_buf, buffer + sent, to_send);
+            memcpy(vq_buf, &buf[sent], to_send);
         }
         if (chain_vq_buf(vq, &handle, vq_buf, to_send)) {
             return -1;
@@ -205,6 +222,7 @@ int camkes_virtqueue_driver_scatter_send_buffer(virtqueue_driver_t *vq, void *bu
 int camkes_virtqueue_driver_gather_copy_buffer(virtqueue_driver_t *vq, virtqueue_ring_object_t *handle,
                                                void *buffer, size_t size)
 {
+    unt8_t *buf = (unt8_t *)buffer;
     size_t copied = 0;
     void *used_buf;
     unsigned buf_size;
@@ -214,7 +232,7 @@ int camkes_virtqueue_driver_gather_copy_buffer(virtqueue_driver_t *vq, virtqueue
         size_t to_copy = copied + buf_size > size ? size - copied : buf_size;
 
         if (to_copy) {
-            memcpy(buffer + copied, used_buf, to_copy);
+            memcpy(&buf[copied], used_buf, to_copy);
         }
         copied += to_copy;
         camkes_virtqueue_buffer_free(vq, used_buf);
@@ -225,6 +243,7 @@ int camkes_virtqueue_driver_gather_copy_buffer(virtqueue_driver_t *vq, virtqueue
 int camkes_virtqueue_device_scatter_copy_buffer(virtqueue_device_t *vq, virtqueue_ring_object_t *handle,
                                                 void *buffer, size_t size)
 {
+    unt8_t *buf = (unt8_t *)buffer;
     size_t sent = 0;
 
     while (sent < size) {
@@ -238,7 +257,7 @@ int camkes_virtqueue_device_scatter_copy_buffer(virtqueue_device_t *vq, virtqueu
             return -1;
         }
         to_copy = size - sent < buf_size ? size - sent : buf_size;
-        memcpy(avail_buf, buffer + sent, to_copy);
+        memcpy(avail_buf, &buf[sent], to_copy);
         sent += to_copy;
     }
     virtqueue_add_used_buf(vq, handle, sent);
@@ -248,6 +267,7 @@ int camkes_virtqueue_device_scatter_copy_buffer(virtqueue_device_t *vq, virtqueu
 int camkes_virtqueue_device_gather_copy_buffer(virtqueue_device_t *vq, virtqueue_ring_object_t *handle,
                                                void *buffer, size_t size)
 {
+    unt8_t *buf = (unt8_t *)buffer;
     size_t sent = 0;
 
     while (sent < size) {
@@ -261,7 +281,7 @@ int camkes_virtqueue_device_gather_copy_buffer(virtqueue_device_t *vq, virtqueue
             return -1;
         }
         to_copy = size - sent < buf_size ? size - sent : buf_size;
-        memcpy(buffer + sent, avail_buf, to_copy);
+        memcpy(&buf[sent], avail_buf, to_copy);
         sent += to_copy;
     }
     virtqueue_add_used_buf(vq, handle, sent);
