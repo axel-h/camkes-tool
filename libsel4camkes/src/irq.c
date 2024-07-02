@@ -79,17 +79,21 @@ static bool check_irq_info_is_equal(ps_irq_t *a, ps_irq_t *b)
 
 static allocated_irq_t **find_matching_irq_entry_by_interrupt(ps_irq_t *irq)
 {
+    ZF_LOGI("search for %d", irq->irq.number);
     for (allocated_irq_t **irq_entry = __start__allocated_irqs;
          irq_entry < __stop__allocated_irqs; irq_entry++) {
         /* We use this function for 'register', so the IRQ entries have to be unallocated */
+        ZF_LOGI("irq_entry allocated is %d", (*irq_entry)->is_allocated);
         if (!((*irq_entry)->is_allocated)) {
             ps_irq_t *irq_info = &((*irq_entry)->irq);
+            ZF_LOGI("irq %d", irq_info->irq.number);
             if (check_irq_info_is_equal(irq_info, irq)) {
                 return irq_entry;
             }
+            ZF_LOGI("sorry");
         }
     }
-
+    ZF_LOGI("nothing found for %d", irq->irq.number);
     return NULL;
 }
 
@@ -110,6 +114,8 @@ static allocated_irq_t **find_matching_irq_entry_by_cptr(seL4_CPtr irq_cptr)
 
 static irq_id_t camkes_irq_register(void *cookie, ps_irq_t irq, irq_callback_fn_t callback, void *callback_data)
 {
+    ZF_LOGI("camkes_irq_register %d", irq.irq.number);
+
     if (!callback) {
         return -EINVAL;
     }
