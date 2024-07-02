@@ -219,21 +219,6 @@ camkes_error_action_t camkes_error(camkes_error_t *e) COLD;
 
 #ifdef CONFIG_CAMKES_ERROR_HANDLER_CONFIGURABLE
 
-/* Indicate to the compiler that wherever this macro appears is a cold
- * execution path. That is, it is not performance critical and likely rarely
- * used. A perfect example is error handling code. This gives the compiler a
- * light hint to deprioritise optimisation of this path.
- */
-
-#ifdef __clang__
-#define ___COLD_PATH() do { } while(0)
-#else
-#define ___COLD_PATH() \
-    do { \
-        JOIN(cold_path_, __COUNTER__): COLD UNUSED; \
-    } while (0)
-#endif
-
 /* Convenience macro for throwing an error from glue code.
  *  handler - A camkes_error_handler_t to invoke.
  *  edata - Error structure to throw to the error handler.
@@ -242,7 +227,6 @@ camkes_error_action_t camkes_error(camkes_error_t *e) COLD;
  *    statement).
  */
 #define ERR(handler, edata, action) ({ \
-            ___COLD_PATH(); \
             camkes_error_t _e = edata; \
             _e.filename = __FILE__; \
             _e.lineno = __LINE__; \
